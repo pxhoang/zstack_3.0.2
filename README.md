@@ -1,21 +1,114 @@
 # Table of contents
 
 - [Table of contents](#table-of-contents)
-  - [Information](#information)
-  - [Firmware patch 3.0.x](#firmware-patch-30x)
-  - [Build JH_2538_2592_ZNP_UART_20211222.patch](#build-jh_2538_2592_znp_uart_20211222patch)
+  - [Firmware](#firmware)
+    - [Work flow](#work-flow)
+    - [CC2538 physical address ranges](#cc2538-physical-address-ranges)
+    - [Flash address](#flash-address)
+  - [Build notes](#build-notes)
+    - [Zstack version](#zstack-version)
+    - [Firmware patch 3.0.x](#firmware-patch-30x)
+    - [IAR zstack workspaces](#iar-zstack-workspaces)
+    - [CC2538ZNP-Debug](#cc2538znp-debug)
+    - [CC2538ZNP-With-SBL](#cc2538znp-with-sbl)
+    - [CC2538ZNP-Without-SBL](#cc2538znp-without-sbl)
+  - [Build JH\_2538\_2592\_ZNP\_UART\_20211222.patch](#build-jh_2538_2592_znp_uart_20211222patch)
     - [Prerequisite](#prerequisite)
-    - [Apply JH_2538_2592_ZNP_UART_20211222.patch](#apply-jh_2538_2592_znp_uart_20211222patch)
-      - [Apply JH_2538_2592_ZNP_UART_20211222.patch](#apply-jh_2538_2592_znp_uart_20211222patch-1)
+    - [JH\_2538\_2592\_ZNP\_UART\_20211222.patch](#jh_2538_2592_znp_uart_20211222patch)
+      - [Apply JH\_2538\_2592\_ZNP\_UART\_20211222.patch](#apply-jh_2538_2592_znp_uart_20211222patch)
       - [Modify PIN mapping](#modify-pin-mapping)
       - [Reset .ewp](#reset-ewp)
       - [Config IAR 8.22.1](#config-iar-8221)
-    - [CC2538ZNP Without SBL](#cc2538znp-without-sbl)
-    - [CC2538ZNP with SBL](#cc2538znp-with-sbl)
+    - [CC2538ZNP Without SBL](#cc2538znp-without-sbl-1)
+    - [CC2538ZNP with SBL](#cc2538znp-with-sbl-1)
 
-## Information
+## Firmware
 
-1/ Zstack version
+### Work flow
+
+- The CC2538 always starts at 0x0000.
+- If you’ve flashed an SBL there, the ROM will execute it. The SBL then jumps to the app at 0x2000, not 0x0020.
+- If you use the Without-SBL image, then your application itself is placed at 0x0000. In that case, the chip boots directly into the app, skipping any bootloader logic entirely.
+
+### CC2538 physical address ranges
+
+| Region                                        | Address Range             | Size        | Description                                              |
+| --------------------------------------------- | ------------------------- | ----------- | -------------------------------------------------------- |
+| Code Flash (Main Program Memory)              | 0x00200000 -> 0x0027FFFF  | 512KB       | Non-volatile flash memory for firmware, constants, etc.  |
+| SRAM (Data Memory)                            | 0x2000 0000 → 0x2000 7FFF | 32 KB       | Volatile memory for stack, heap, global/static variable  |
+| Peripheral Registers                          | 0x4000 0000 → 0x400F FFFF | 1 MB window | Memory-mapped I/O (GPIO, UART, SPI, timers, etc.)        |
+| Info Page (Flash Info Region)                 | 0x0027 F000 → 0x0027 FFFF | 4 KB        | TI factory info, IEEE address, lock bits, boot config.   |
+| Customer Configuration Area (CCFG)            | 0x0027 FFD0 → 0x0027 FFFF | 48 B        | Stores bootloader enable flags, image validity, etc.     |
+| ROM Bootloader (internal, not in flash space) | Fixed inside chip         |             | TI’s built-in serial bootloader, runs before user flash. |
+
+```css
+Address ↑ (higher)
+┌──────────────────────────┐ 0x0027_FFFF  ← End of 512 KB flash
+│ CCFG (boot/config)       │
+│ Info Page (factory data) │
+├──────────────────────────┤ 0x0027_F000
+│ Application / ZNP code   │
+│ (main flash area)        │
+│                          │
+│ Bootloader (optional)    │
+├──────────────────────────┤ 0x0020_0000  ← Start of flash
+│                          │
+│ [Unused gap / reserved]  │
+├──────────────────────────┤
+│ SRAM (variables, stack)  │
+│ 0x2000_0000–0x2000_7FFF  │
+├──────────────────────────┤
+│ Peripheral registers      │
+│ 0x4000_0000–0x400F_FFFF  │
+└──────────────────────────┘
+```
+
+### Flash address
+
+Flash firmware means uploading flash image starting from 0x0020_0000. Assume,
+
+- CC2538ZNP_Bootloader.bin: BL (20KB) `zstack_3.0.2\Z-Stack 3.0.2\Projects\zstack\Utilities\BootLoad\CC2538_UART\Boot.eww`
+- CC2538ZNP_With_SBL.bin: APP_SBL that compatibles with an bootloader. (492KB) `zstack_3.0.2\Z-Stack 3.0.2\Projects\zstack\ZNP\CC2538` - Workspace CC2538ZNP_With_SBL
+- CC2538ZNP_Without_SBL.bin: APP_NOBL that can work without bootloader (492KB) `zstack_3.0.2\Z-Stack 3.0.2\Projects\zstack\ZNP\CC2538` - Workspace CC2538ZNP_Without_SBL
+
+1/ Combined Firmware (COMBINE_FIRMARE)
+
+- Combine BL + APP_SBL (CC2538ZNP_With_SBL.bin + CC2538ZNP_Bootloader.bin) (512KB)
+- Can be programmed using the SmartRF Programmer tool from TI, start address is 0x00200000
+
+2/ APP_SBL
+
+- Can be loaded to a module flashed with `COMBINE_FIRMARE` using the UART
+- Using to update with zigbee plugin
+
+2/ APP_NOBL (492KB)
+
+- DON'T use this
+
+3/ Modkamru patch
+
+- Changes in Modkamru is only applied for CC2538.icf, It means the workspace to build must be `CC2538ZNP_Without_SBL`
+- Therefore, there is no bootloader on CC2538. We can not use OTA update (APP_SBL)
+- Modkamru enabled BOOTLOADER_BACKDOOR_ENABLE(`startup_ewarm.c`). By this changes, When you hold a specific GPIO pin (usually PA0) during reset, the CC2538 will enter the ROM bootloader mode. Then use TI’s SmartRF Flash Programmer 2 or cc2538-bsl.py over UART to reflash firmware.
+
+```diff
+diff --git a/Projects/zstack/Tools/CC2538DB/CC2538.icf b/Projects/zstack/Tools/CC2538DB/CC2538.icf
+index d4c95cc..b56a2ff 100644
+--- a/Projects/zstack/Tools/CC2538DB/CC2538.icf
++++ b/Projects/zstack/Tools/CC2538DB/CC2538.icf
+-define region FLASH = mem:[from 0x00200000 to 0x0027C7FF];
++define region FLASH = mem:[from 0x00200000 to 0x002737FF];
+
+-define region NV_MEM = mem:[from 0x0027C800 to 0x0027F7FF];
++define region NV_MEM = mem:[from 0x00273800 to 0x0027F7FF];
+
+-define region SRAM = mem:[from 0x20004000 to 0x20007FFF];
++define region SRAM = mem:[from 0x20000000 to 0x20007FFF];
+```
+
+## Build notes
+
+### Zstack version
 
 ```log
 Z-Stack_3.0.x: CC2538 + CC2592
@@ -23,57 +116,66 @@ Z-Stack_3.x.0: CC2652P/CC2652R/CC2652RB/CC1352P-2
 Ref: https://github.com/Koenkk/Z-Stack-firmware/blob/master/coordinator/README.md
 ```
 
-## Firmware patch 3.0.x
+### Firmware patch 3.0.x
 
 1/ Koenkk firmware_CC2531_CC2530.patch
 
 - [firmware_CC2531_CC2530.patch](https://github.com/Koenkk/Z-Stack-firmware/blob/master/coordinator/Z-Stack_3.0.x/firmware_CC2531_CC2530.patch)
 
-```log
-CC2530, CC2530_CC2591, CC2530_CC2592, CC2531
-
-20190523
-Add CC2530 and CC2530_CC2591 firmware
-
-20190425
-Initial version.
-
-CC2538_CC2592_MODKAMRU_V3
-Available here.
-```
-
 2/ JetHome: JH_2538_2592_ZNP_UART_20211222.patch
 
 - [JH_2538_2592_ZNP_UART_20211222.patch](https://github.com/jethome-ru/zigbee-firmware/blob/master/ti/coordinator/cc2538_cc2592/README.md)
 
-```log
-Firmware version 20211222
-* Fixed work with devices Aqara E1;
-* Added GREEN POWER cluster;
-* CODE_REVISION_NUMBER changed to 20211222
+### IAR zstack workspaces
 
-Firmware version 20201010
-* FIX #2
-* NV flash incremented from 12 pages to 24 pages. (HAL_NV_PAGE_CNT)
-* Work with devices which are not support APS encryption (zgApsAllowR19Sec = TRUE)
-* Changed FLASH and NV memory boundaries
-* Disabled TCLK (requestNewTrustCenterLinkKey = FALSE)
-* CODE_REVISION_NUMBER changed to 20201010
+- "With-SBL" = app is compatible with an SBL, not contains the SBL.
 
-Firmware version 20200729
-* Enabled Serial Bootloader (SBL). Use low logic level on PA7 input to enter SBL
-* Added UART mode firmware
-* CODE_REVISION_NUMBER changed to 20200729
+### CC2538ZNP-Debug
 
-Firmware version 20200427
-* Based on MODKAM_V3 firmware. Differences from MODKAM_V3:
-* Decremented number of direct children from 100 to 80: (NWK_MAX_DEVICE_LIST=80)
-* CODE_REVISION_NUMBER changed to 20200427
+```bash
+# options/output converter/generate additional output/raw binary
+$PROJ_DIR$\dev\ZNP.bin
 
-Firmware version 20200327
-* Original firmware MODKAM_V3
+# options/Runtime checking/C/C++ compiler/preprocessor
+xHAL_UART_USB
+HAL_UART=TRUE
+xZNP_ALT
+```
 
-REF: https://github.com/jethome-ru/zigbee-firmware/blob/master/ti/coordinator/cc2538_cc2592/README.md
+### CC2538ZNP-With-SBL
+
+- “With-SBL” = app is compatible with an SBL, not contains the SBL.
+
+```BASH
+# options/ Runtime checking/ output converter/generate additional output/raw binary
+$PROJ_DIR$\dev\CC2538ZNP-with-SBL.bin
+
+# options/ Runtime checking/ output converter/generate additional output/build actions
+# edit znp.js
+--start znp.js %2
+++node znp.js %2
+
+# options/ Runtime checking/C/C++ compiler/preprocessor
+xHAL_UART_USB
+HAL_UART=TRUE
+xZNP_ALT
+```
+
+### CC2538ZNP-Without-SBL
+
+```BASH
+# options/ Runtime checking/ output converter/generate additional output/raw binary
+$PROJ_DIR$\dev\CC2538ZNP-without-SBL.bin
+
+# options/ Runtime checking/ output converter/generate additional output/build actions
+# edit znp.js
+--start znp.js %2
+++node znp.js %2
+
+# options/Runtime checking/C/C++ compiler/preprocessor
+xHAL_UART_USB
+HAL_UART=TRUE
+xZNP_ALT
 ```
 
 ## Build JH_2538_2592_ZNP_UART_20211222.patch
@@ -82,13 +184,14 @@ REF: https://github.com/jethome-ru/zigbee-firmware/blob/master/ti/coordinator/cc
 
 - [Z-STACK-3.0.2 — Z-STACK 3.0.2](https://www.ti.com/tool/Z-STACK)
 - [IAR Embedded Workbench for ARM 8.22.1](C:\Users\hoang.pham\Documents\pxhoang\work\ftdi\doc\zigbee\Legacy\transfer\software)
+- NodeJS
 
-### Apply JH_2538_2592_ZNP_UART_20211222.patch
+### JH_2538_2592_ZNP_UART_20211222.patch
 
 #### Apply JH_2538_2592_ZNP_UART_20211222.patch
 
-```shell
-git apply --directory="Z-Stack 3.0.2" .\patch\JH_2538_2592_ZNP_UART_20211222.patch
+```BASH
+git apply --directory="Z-Stack 3.0.2" .\patch\JH_2538_2592_ZNP_UART_20211222.patch --ignore-space-change
 ```
 
 #### Modify PIN mapping
