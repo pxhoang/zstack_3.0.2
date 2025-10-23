@@ -2,8 +2,11 @@
 
 - [Table of contents](#table-of-contents)
   - [Firmware](#firmware)
-    - [Work flow](#work-flow)
-    - [CC2538 physical address ranges](#cc2538-physical-address-ranges)
+    - [Known issues](#known-issues)
+    - [Physical address](#physical-address)
+      - [No Bootloader](#no-bootloader)
+      - [Bootloader](#bootloader)
+      - [Extend 32K RAM for CC2538](#extend-32k-ram-for-cc2538)
     - [Flash address](#flash-address)
   - [Build notes](#build-notes)
     - [Zstack version](#zstack-version)
@@ -24,43 +27,190 @@
 
 ## Firmware
 
-### Work flow
+### Known issues
 
-- The CC2538 always starts at 0x0000.
-- If you’ve flashed an SBL there, the ROM will execute it. The SBL then jumps to the app at 0x2000, not 0x0020.
-- If you use the Without-SBL image, then your application itself is placed at 0x0000. In that case, the chip boots directly into the app, skipping any bootloader logic entirely.
+```bash
+# REF: https://e2e.ti.com/support/wireless-connectivity/zigbee-thread-group/zigbee-and-thread/f/zigbee-thread-forum/902631/faq-cc2538-z-stack-3-0-2-known-issues-and-fixes
+1. Memory Leak in zcl.c
+```
 
-### CC2538 physical address ranges
+| No  | Title                                                                                                              | Description | IsFixed |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ----------- | ------- |
+| 1   | Memory Leak in zcl.c                                                                                               |             | YES     |
+| 2   | Network association issues after prior APS Remove or Leave Request                                                 |             | YES     |
+| 3   | Soft Reset/Freezing/Stack Overflow due to BDB_REPORTING on CC2530/CC2531                                           |             |         |
+| 4   | OTA Upgrade from ZHA 1.2 to Z3.0 results in broken device                                                          |             | YES     |
+| 5   | IEEE Address of CC2538ZNP is reported incorrectly                                                                  |             |         |
+| 6   | Modifying CC2538 Linker to utilize all 32k RAM causes lockup                                                       |             | TODO    |
+| 7   | ZED does not receive Broadcast sent to MAC dst 0xFFFF from parent                                                  |             |         |
+| 8   | NWK/APS packet retries/failure when ZED polls during commissioning (Transport Key, Simple Descriptor Request, etc) |             |         |
+| 9   | ZED does not go back to low power state after losing parent and attempting recovery                                |             |         |
+| 10  | ZCL ID mixup for Chatting + Voice Over Zigbee                                                                      |             |         |
+| 11  | CC2530/1 ZNP device sporadically returns ZMemError                                                                 |             |         |
+| 12  | ZC sends ZEDs Leave Reqs after MAC Association                                                                     |             |         |
+| 13  | APS ACK transID parameter error if using zcl_TransID                                                               |             |         |
+| 14  | BDB reporting doesn't support read/write attribute data callback functions                                         |             |         |
+| 15  | Errors due to BDB header build types                                                                               |             |         |
+| 16  | Low Power Mode not Entered upon ZED Rejoin                                                                         |             |         |
+| 17  | Low Power Mode not Entered upon ZED Factory New Before Commissioning                                               |             |         |
+| 18  | ZED Poll Rate Set Incorrectly if Reset from a Leave Request with Rejoin Enabled                                    |             |         |
+| 19  | Memory Leak in the F&B Function of BDB                                                                             |             |         |
+| 20  | Large number of Address Manager Entries Results in Long ZC Startup Times                                           |             |         |
+| 21  | Inclusion of HAL_PA_LNA_CC2592 did not Propagate to ZNP Project                                                    |             |         |
+| 22  | Multiple attribute reporting issue                                                                                 |             |         |
+| 23  | ZNP initializes GP proxy table with the wrong item ID                                                              |             |         |
+| 24  | Frame counter does not increment on device reset                                                                   |             |         |
 
-| Region                                        | Address Range             | Size        | Description                                              |
-| --------------------------------------------- | ------------------------- | ----------- | -------------------------------------------------------- |
-| Code Flash (Main Program Memory)              | 0x00200000 -> 0x0027FFFF  | 512KB       | Non-volatile flash memory for firmware, constants, etc.  |
-| SRAM (Data Memory)                            | 0x2000 0000 → 0x2000 7FFF | 32 KB       | Volatile memory for stack, heap, global/static variable  |
-| Peripheral Registers                          | 0x4000 0000 → 0x400F FFFF | 1 MB window | Memory-mapped I/O (GPIO, UART, SPI, timers, etc.)        |
-| Info Page (Flash Info Region)                 | 0x0027 F000 → 0x0027 FFFF | 4 KB        | TI factory info, IEEE address, lock bits, boot config.   |
-| Customer Configuration Area (CCFG)            | 0x0027 FFD0 → 0x0027 FFFF | 48 B        | Stores bootloader enable flags, image validity, etc.     |
-| ROM Bootloader (internal, not in flash space) | Fixed inside chip         |             | TI’s built-in serial bootloader, runs before user flash. |
+### Physical address
 
-```css
-Address ↑ (higher)
-┌──────────────────────────┐ 0x0027_FFFF  ← End of 512 KB flash
-│ CCFG (boot/config)       │
-│ Info Page (factory data) │
-├──────────────────────────┤ 0x0027_F000
-│ Application / ZNP code   │
-│ (main flash area)        │
-│                          │
-│ Bootloader (optional)    │
-├──────────────────────────┤ 0x0020_0000  ← Start of flash
-│                          │
-│ [Unused gap / reserved]  │
-├──────────────────────────┤
-│ SRAM (variables, stack)  │
-│ 0x2000_0000–0x2000_7FFF  │
-├──────────────────────────┤
-│ Peripheral registers      │
-│ 0x4000_0000–0x400F_FFFF  │
-└──────────────────────────┘
+#### No Bootloader
+
+```scss
+          DEFAULT TI LAYOUT                                   MODKAMRU LAYOUT
+┌───────────────────────────────────────────────┐    ┌───────────────────────────────────────────────┐
+│               ON-CHIP FLASH 512 KB            │    │               ON-CHIP FLASH 512 KB            │
+│                                               │    │                                               │
+│ [Factory / Security / Keys]                   │    │ [Factory / Security / Keys]                   │
+│  FLASH_LCK   0x0027FFE0–0x0027FFFF (32 B)     │    │  FLASH_LCK   0x0027FFE0–0x0027FFFF (32 B)     │
+│  FLASH_CCA   0x0027FFD4–0x0027FFDF (12 B)     │    │  FLASH_CCA   0x0027FFD4–0x0027FFDF (12 B)     │
+│  CP_IEEE     0x0027FFCC–0x0027FFD3 (8 B)      │    │  CP_IEEE     0x0027FFCC–0x0027FFD3 (8 B)      │
+│  CP_DEPK     0x0027FFB4–0x0027FFCB (24 B)     │    │  CP_DEPK     0x0027FFB4–0x0027FFCB (24 B)     │
+│  CP_CAPK     0x0027FF9C–0x0027FFB3 (24 B)     │    │  CP_CAPK     0x0027FF9C–0x0027FFB3 (24 B)     │
+│  CP_IMPC     0x0027FF6C–0x0027FF9B (48 B)     │    │  CP_IMPC     0x0027FF6C–0x0027FF9B (48 B)     │
+│  CP_DEPK_283 0x0027FF48–0x0027FF6B (36 B)     │    │  CP_DEPK_283 0x0027FF48–0x0027FF6B (36 B)     │
+│  CP_CAPK_283 0x0027FF20–0x0027FF47 (40 B)     │    │  CP_CAPK_283 0x0027FF20–0x0027FF47 (40 B)     │
+│  CP_IMPC_283 0x0027FED4–0x0027FF1F (76 B)     │    │  CP_IMPC_283 0x0027FED4–0x0027FF1F (76 B)     │
+│  Factory Params 0x0027F800–0x0027FED3 (3.8 KB)│    │  Factory Params 0x0027F800–0x0027FED3 (3.8 KB)│
+│───────────────────────────────────────────────│    │───────────────────────────────────────────────│
+│ [Z-Stack NV Memory]                           │    │ [Z-Stack NV Memory]                           │
+│  NV_MEM 0x0027C800–0x0027F7FF (12 KB, 6 pages)│    │  NV_MEM 0x00273800–0x0027F7FF (48 KB, 24 pages)│
+│  ▸ Network tables / bindings / keys           │    │  ▸ Expanded persistent storage                │
+│───────────────────────────────────────────────│    │───────────────────────────────────────────────│
+│ [Application + Z-Stack Firmware]              │    │ [Application + Z-Stack Firmware]              │
+│  FLASH 0x00200000–0x0027C7FF (503 808 B)      │    │  FLASH 0x00200000–0x002737FF (462 336 B)      │
+│  ▸ Startup / ISR vectors / HAL / OSAL         │    │  ▸ Startup / ISR vectors / HAL / OSAL         │
+│  ▸ Z-Stack core (NWK/APS/ZDO)                 │    │  ▸ Z-Stack core (NWK/APS/ZDO)                 │
+│  ▸ Application tasks / profiles               │    │  ▸ Application tasks / profiles               │
+│  ▸ Const data, libraries                      │    │  ▸ Const data, libraries                      │
+└───────────────────────────────────────────────┘    └───────────────────────────────────────────────┘
+│               ON-CHIP SRAM 32 KB              │    │               ON-CHIP SRAM 32 KB              │
+│───────────────────────────────────────────────│    │───────────────────────────────────────────────│
+│ Used RAM 16 KB 0x20004000–0x20007FFF          │    │ Full RAM 32 KB 0x20000000–0x20007FFF          │
+│  ▸ Stack / heap / Z-Stack buffers             │    │  ▸ Stack / heap / Z-Stack buffers             │
+│───────────────────────────────────────────────│    │───────────────────────────────────────────────│
+│ Reserved 16 KB 0x20000000–0x20003FFF          │    │ — (no reserved area, fully usable)            │
+└───────────────────────────────────────────────┘    └───────────────────────────────────────────────┘
+```
+
+#### Bootloader
+
+```text
+┌───────────────────────────────────────────────────────┐
+│                  ON-CHIP FLASH 512 KB                 │
+│                                                       │
+│ [Factory / Security / Keys]                           │
+│  FLASH_LCK     0x0027FFE0–0x0027FFFF   (32 B)         │
+│  FLASH_CCA     0x0027FFD4–0x0027FFDF   (12 B)         │
+│  CP_IEEE       0x0027FFCC–0x0027FFD3   (8 B)          │
+│  CP_DEPK       0x0027FFB4–0x0027FFCB   (24 B)         │
+│  CP_CAPK       0x0027FF9C–0x0027FFB3   (24 B)         │
+│  CP_IMPC       0x0027FF6C–0x0027FF9B   (48 B)         │
+│  CP_DEPK_283   0x0027FF48–0x0027FF6B   (36 B)         │
+│  CP_CAPK_283   0x0027FF20–0x0027FF47   (40 B)         │
+│  CP_IMPC_283   0x0027FED4–0x0027FF1F   (76 B)         │
+│  Factory Params 0x0027F800–0x0027FED3  (3.8 KB)       │
+│───────────────────────────────────────────────────────│
+│ [Z-Stack NV Memory]                                   │
+│  NV_MEM 0x0027C800–0x0027F7FF  (12 KB, 6 pages)       │
+│  ▸ Persistent network state, bindings, keys           │
+│───────────────────────────────────────────────────────│
+│ [Application + Bootloader Firmware]                   │
+│  FLASH 0x00200134–0x0027AFFF  (≈503 KB)               │
+│  ▸ Z-Stack core (NWK, APS, ZDO)                       │
+│  ▸ Application tasks, profiles, clusters              │
+│  ▸ System ISR handlers, HAL, and startup code         │
+│  ▸ Embedded single bootloader routines                │
+│───────────────────────────────────────────────────────│
+│ [Bootloader Header / Vector Table]                    │
+│  SBL_CHECKSUM 0x0020011C–0x00200133 (28 B)            │
+│  INTVEC       0x00200000–0x0020011B (284 B)           │
+│  ▸ Interrupt vector table and checksum for integrity  │
+└───────────────────────────────────────────────────────┘
+│                    ON-CHIP SRAM 32 KB                 │
+│───────────────────────────────────────────────────────│
+│ Used RAM  0x20004000–0x20007FFF (16 KB)               │
+│  ▸ Stack, heap, RTOS variables, Z-Stack buffers       │
+│ Reserved  0x20000000–0x20003FFF (16 KB)               │
+│  ▸ Reserved for ROM routines / future expansion       │
+└───────────────────────────────────────────────────────┘
+```
+
+#### Extend 32K RAM for CC2538
+
+- FTDI CC2538 uses 32KB RAM, but Z-stack 3.0.2 does not enable it by default.
+- Coordinator is NOT PM2 device (device always powered). They stay in PM0 or PM1 to route messages continuously.
+- Therefore, you can safely use all 32 KB of RAM.
+
+1/ 32K memory layout
+
+```text
+         DEFAULT TI (SINGLE BOOTLOADER)                   EXTENDED (24 NV PAGES + FULL 32 KB SRAM)
+┌────────────────────────────────────────────┐        ┌────────────────────────────────────────────┐
+│              ON-CHIP FLASH 512 KB          │        │              ON-CHIP FLASH 512 KB          │
+│                                            │        │                                            │
+│ [Factory / Security / Keys]                │        │ [Factory / Security / Keys]                │
+│  FLASH_LCK     0x0027FFE0–0x0027FFFF (32B) │        │  FLASH_LCK     0x0027FFE0–0x0027FFFF (32B) │
+│  FLASH_CCA     0x0027FFD4–0x0027FFDF (12B) │        │  FLASH_CCA     0x0027FFD4–0x0027FFDF (12B) │
+│  CP_IEEE       0x0027FFCC–0x0027FFD3 (8B)  │        │  CP_IEEE       0x0027FFCC–0x0027FFD3 (8B)  │
+│  CP_xxx Keys/Certs 0x0027FED4–0x0027FFCB   │        │  CP_xxx Keys/Certs 0x0027FED4–0x0027FFCB   │
+│  Factory Params 0x0027F800–0x0027FED3 (3.8K)│       │  Factory Params 0x0027F800–0x0027FED3 (3.8K)│
+│────────────────────────────────────────────│        │────────────────────────────────────────────│
+│ [Z-Stack NV Memory]                        │        │ [Z-Stack NV Memory — EXPANDED]             │
+│  NV_MEM 0x0027C800–0x0027F7FF (12 KB)      │        │  NV_MEM 0x00273800–0x0027F7FF (48 KB)      │
+│  ▸ 6 pages × 2 KB                          │        │  ▸ 24 pages × 2 KB                         │
+│────────────────────────────────────────────│        │────────────────────────────────────────────│
+│ [Application + Bootloader Firmware]        │        │ [Application + Bootloader Firmware]        │
+│  FLASH 0x00200134–0x0027AFFF (≈502 KB)     │        │  FLASH 0x00200134–0x002737FF (≈462 KB)     │
+│  ▸ Z-Stack core, app code, boot routines   │        │  ▸ Same firmware, reduced code space       │
+│────────────────────────────────────────────│        │────────────────────────────────────────────│
+│ [Bootloader Header / Vectors]              │        │ [Bootloader Header / Vectors]              │
+│  SBL_CHECKSUM 0x0020011C–0x00200133 (28B)  │        │  SBL_CHECKSUM 0x0020011C–0x00200133 (28B)  │
+│  INTVEC       0x00200000–0x0020011B (284B) │        │  INTVEC       0x00200000–0x0020011B (284B) │
+└────────────────────────────────────────────┘        └────────────────────────────────────────────┘
+│               ON-CHIP SRAM 32 KB           │        │               ON-CHIP SRAM 32 KB           │
+│────────────────────────────────────────────│        │────────────────────────────────────────────│
+│ Used RAM 16 KB 0x20004000–0x20007FFF       │        │ Full RAM 32 KB 0x20000000–0x20007FFF       │
+│  ▸ Stack / Heap / Buffers (half used)      │        │  ▸ Stack / Heap / Buffers (fully enabled)  │
+│ Reserved 16 KB 0x20000000–0x20003FFF       │        │  — (no reserved region)                    │
+└────────────────────────────────────────────┘        └────────────────────────────────────────────┘
+```
+
+2/ Modifying CC2538 Linker to utilize all 32k RAM
+
+- Some CC2538 parts have 32k of RAM, but the first 16k is disabled by default in our linker file since only the second 16k is retained in all power modes. The first 16k of RAM loses its contents when the device enters PM2.
+- If a device which never goes into low power mode, it is fine to reclaim this RAM for application usage.
+
+```diff
+# Z-Stack 3.0.2\Projects\zstack\Tools\CC2538DB\CC2538.icf
+# Z-Stack 3.0.2\Projects\zstack\Tools\CC2538DB\CC2538-sb.icf
+@@
+-define region SRAM = mem:[from 0x20004000 to 0x20007FFF];
++define region SRAM = mem:[from 0x20000000 to 0x20007FFF];     // use full 32 KB RAM
+```
+
+Potential issue:
+
+- However, in some applications, increasing the RAM to this value will cause Z-Stack to lock up.
+- Move the run-time stack to the end of RAM. Find the code below in your linker file and make the following change:
+
+```bash
+//
+// Indicate that the noinit values should be left alone.  This includes the
+// stack, which if initialized will destroy the return address from the
+// initialization code, causing the processor to branch to zero and fault.
+//
+do not initialize { section .noinit };
+place at end of SRAM { section .noinit }; // ++++++++++ ADD THIS LINE ++++++++++
 ```
 
 ### Flash address
