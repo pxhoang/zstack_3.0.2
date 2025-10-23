@@ -147,7 +147,7 @@
 
 #### Extend 32K RAM for CC2538
 
-- FTDI CC2538 uses 32KB RAM, but Z-stack 3.0.2 does not enable it by default.
+- FTDI CC2538 uses 32KB RAM, but Z-stack 3.0.2 is not enabled it by default.
 - Coordinator is NOT PM2 device (device always powered). They stay in PM0 or PM1 to route messages continuously.
 - Therefore, you can safely use all 32 KB of RAM.
 
@@ -348,9 +348,7 @@ git apply --directory="Z-Stack 3.0.2" .\patch\JH_2538_2592_ZNP_UART_20211222.pat
 
 #### Reset .ewp
 
-- The IAR version that JetHome_RU is using is different from FTDI
-- I can not find the versiion they are using
-- ZNP.ewp decouples to IAR. If we want to build it with IAR 8.22.1, just reset it
+- The IAR version that JetHome_RU is using to build firmware is different from ours
 
 ```BASH
 git checkout "Projects\zstack\ZNP\CC2538\ZNP.ewp"
@@ -358,9 +356,8 @@ git checkout "Projects\zstack\ZNP\CC2538\ZNP.ewp"
 
 #### Config IAR 8.22.1
 
-- Ensure `Runtime Checking\C/C++ compiler/additional include directories` and `Runtime Checking\C/C++ compiler/defined symbols` have values after reseting .EWP otherwise these boxes will be empty
-
-- FDTI board is using UART FC, the config must be applied
+- Ensure `Runtime Checking\C/C++ compiler/additional include directories` and `Runtime Checking\C/C++ compiler/defined symbols` are not empty
+- FDTI board is using UART FC, these must be applied
 
 ```bash
 xHAL_UART_USB
