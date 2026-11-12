@@ -66,7 +66,7 @@
                 </option>
                 <option>
                     <name>OGLastSavedByProductVersion</name>
-                    <state>8.11.1.13270</state>
+                    <state>8.22.1.15696</state>
                 </option>
                 <option>
                     <name>GeneralEnableMisra</name>
@@ -1776,7 +1776,7 @@
                 <option>
                     <name>OOCOutputFormat</name>
                     <version>3</version>
-                    <state>1</state>
+                    <state>3</state>
                 </option>
                 <option>
                     <name>OCOutputOverride</name>
@@ -1784,7 +1784,7 @@
                 </option>
                 <option>
                     <name>OOCOutputFile</name>
-                    <state>CC2538.hex</state>
+                    <state>ZNP.bin</state>
                 </option>
                 <option>
                     <name>OOCCommandLineProducer</name>
@@ -2233,7 +2233,7 @@
                 </option>
                 <option>
                     <name>OGLastSavedByProductVersion</name>
-                    <state>8.11.1.13270</state>
+                    <state>8.22.1.15696</state>
                 </option>
                 <option>
                     <name>GeneralEnableMisra</name>
@@ -2386,29 +2386,33 @@
                 </option>
                 <option>
                     <name>CCDefines</name>
-                    <state>xHAL_UART_USB</state>
-                    <state>xUSB_SETUP_MAX_NUMBER_OF_INTERFACES=5</state>
-                    <state>xHAL_SPI=TRUE</state>
-                    <state>xHAL_UART=TRUE</state>
-                    <state>BDB_FINDING_BINDING_CAPABILITY_ENABLED=0</state>
-                    <state>DISABLE_GREENPOWER_BASIC_PROXY</state>
-                    <state>TC_LINKKEY_JOIN</state>
                     <state>ewarm</state>
+                    <state>FEATURE_SYSTEM_STATS</state>
+                    <state>xPOWER_SAVING</state>
                     <state>CC2538_USE_ALTERNATE_INTERRUPT_MAP=1</state>
                     <state>CC2538ZNP</state>
-                    <state>ZNP_ALT</state>
-                    <state>xPOWER_SAVING</state>
-                    <state>FEATURE_SYSTEM_STATS</state>
                     <state>FEATURE_RESET_MACRO</state>
-                    <state>ZDNWKMGR_MIN_TRANSMISSIONS=0</state>
-                    <state>MT_UART_DEFAULT_OVERFLOW=FALSE</state>
                     <state>ASSERT_RESET</state>
-                    <state>MAKE_CRC_SHDW</state>
-                    <state>SBL_CLIENT</state>
+                    <state>FAKE_CRC_SHDW</state>
+                    <state>ZDNWKMGR_MIN_TRANSMISSIONS=0</state>
+                    <state>xHAL_UART_USB</state>
+                    <state>xHAL_SPI=TRUE</state>
+                    <state>HAL_UART=TRUE</state>
+                    <state>xZNP_ALT</state>
+                    <state>MT_UART_DEFAULT_OVERFLOW=FALSE</state>
+                    <state>xUSB_SETUP_MAX_NUMBER_OF_INTERFACES=5</state>
+                    <state>TC_LINKKEY_JOIN</state>
+                    <state>HAL_PA_LNA</state>
+                    <state>HAL_PA_LNA_CC2592</state>
+                    <state>BDB_FINDING_BINDING_CAPABILITY_ENABLED=0</state>
                     <state>ZCL_READ</state>
-                    <state>ZCL_DISCOVER</state>
                     <state>ZCL_WRITE</state>
                     <state>ZCL_BASIC</state>
+                    <state>ZCL_DISCOVER</state>
+                    <state>DISABLE_GREENPOWER_BASIC_PROXY</state>
+                    <state>TP2_LEGACY_ZC</state>
+                    <state>SBL_CLIENT</state>
+                    <state>INCLUDE_REVISION_INFORMATION</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
