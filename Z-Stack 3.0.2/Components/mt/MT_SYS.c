@@ -73,7 +73,7 @@
 #endif
 #if (defined INCLUDE_REVISION_INFORMATION) && ((defined MAKE_CRC_SHDW) || (defined FAKE_CRC_SHDW)) //built for bootloader
   #include "hal_flash.h"
-  #include "sb_shared.h"
+  //#include "sb_shared.h"
 #endif
 
 /******************************************************************************
@@ -516,6 +516,7 @@ static void MT_SysVersion(void)
 
   osal_memcpy(verStr, (uint8 *)MTVersionString, sizeof(MTVersionString));
 
+/*
 #if (defined MAKE_CRC_SHDW) || (defined FAKE_CRC_SHDW)  //built for bootloader
   HalFlashRead(SBL_SIG_ADDR / HAL_FLASH_PAGE_SIZE,
                SBL_SIG_ADDR % HAL_FLASH_PAGE_SIZE,
@@ -537,6 +538,8 @@ static void MT_SysVersion(void)
   // SBL is NOT supported
   sblRev = 0xFFFFFFFF;
 #endif
+*/
+  sblRev = 0xFFFFFFFF;
 
   // Plug the SBL revision indication
   UINT32_TO_BUF_LITTLE_ENDIAN(pBuf,sblRev);
