@@ -84,7 +84,7 @@
 
 /* HGM Port and Pin */
 #define HGM_BASE   GPIO_D_BASE
-#define HGM_PIN    GPIO_PIN_2
+#define HGM_PIN    GPIO_PIN_0
 
 /* ------------------------------------------------------------------------------------------------
  *                                       Minimum safe bus voltage
@@ -117,6 +117,7 @@
 #define ZNP_CFG0_32K_OSC         0         /* 32kHz crystal not installed; internal osc. used */
 #define ZNP_CFG1_SPI             1         /* use SPI transport */
 #define ZNP_CFG1_UART            0         /* use UART transport */
+#define OSC32K_CRYSTAL_INSTALLED FALSE
 extern unsigned char znpCfg1;
 extern unsigned char znpCfg0;
 
@@ -280,7 +281,7 @@ extern unsigned char znpCfg0;
  */
 
 /* ----------- RF-frontend Connection Initialization ---------- */
-#if defined HAL_PA_LNA || defined HAL_PA_LNA_CC2590
+#if defined HAL_PA_LNA || defined HAL_PA_LNA_CC2590 || defined HAL_PA_LNA_CC2592
 extern void MAC_RfFrontendSetup(void);
 #define HAL_BOARD_RF_FRONTEND_SETUP() MAC_RfFrontendSetup()
 #else
@@ -306,7 +307,7 @@ extern void MAC_RfFrontendSetup(void);
 }
 
 
-#ifdef HAL_PA_LNA
+#if defined HAL_PA_LNA || defined HAL_PA_LNA_CC2592
 #define HAL_BOARD_PA_LNA_INIT()  st(GPIOPinTypeGPIOOutput(HGM_BASE, HGM_PIN); )
 #else
 #define HAL_BOARD_PA_LNA_INIT()

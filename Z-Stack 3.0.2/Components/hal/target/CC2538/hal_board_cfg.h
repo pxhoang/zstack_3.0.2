@@ -86,6 +86,7 @@
 /* HGM Port and Pin */
 #define HGM_BASE   GPIO_D_BASE
 #define HGM_PIN    GPIO_PIN_2
+#define OSC32K_CRYSTAL_INSTALLED     FALSE
 
 /* ------------------------------------------------------------------------------------------------
  *                                       Minimum safe bus voltage

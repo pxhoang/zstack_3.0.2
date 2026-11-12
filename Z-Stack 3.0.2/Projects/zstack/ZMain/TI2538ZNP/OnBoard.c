@@ -131,7 +131,7 @@ void InitBoard( uint8 level )
     znpCfg0 = ZNP_CFG0_32K_XTAL;
 #else
     znpCfg1 = ZNP_CFG1_UART;
-    znpCfg0 = ZNP_CFG0_32K_XTAL;
+    znpCfg0 = ZNP_CFG0_32K_OSC; // ZNP_CFG0_32K_XTAL;
 #endif
    
   }

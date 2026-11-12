@@ -115,10 +115,10 @@ void HalUARTInitIsr(void)
   /* Setup PB0 as UART_CTS, PD3 as UART_RTS  
    * PA1 as UART_TX and PA0 as UART_RX
    */ 
-  IOCPinConfigPeriphOutput(GPIO_A_BASE, GPIO_PIN_1, IOC_MUX_OUT_SEL_UART1_TXD);
-  IOCPinConfigPeriphInput(GPIO_A_BASE, GPIO_PIN_0, IOC_UARTRXD_UART1);
-  GPIOPinTypeUARTInput(GPIO_A_BASE, GPIO_PIN_0);
-  GPIOPinTypeUARTOutput(GPIO_A_BASE, GPIO_PIN_1);  
+  IOCPinConfigPeriphOutput(GPIO_A_BASE, GPIO_PIN_0, IOC_MUX_OUT_SEL_UART1_TXD);
+  IOCPinConfigPeriphInput(GPIO_A_BASE, GPIO_PIN_1, IOC_UARTRXD_UART1);
+  GPIOPinTypeUARTInput(GPIO_A_BASE, GPIO_PIN_1);
+  GPIOPinTypeUARTOutput(GPIO_A_BASE, GPIO_PIN_0);
   recRst();
 
 }
@@ -160,10 +160,10 @@ uint8 HalUARTOpenIsr(uint8 port, halUARTCfg_t *config)
   
   if(config->flowControl)
   {
-    IOCPinConfigPeriphOutput(GPIO_D_BASE, GPIO_PIN_3, IOC_MUX_OUT_SEL_UART1_RTS);
-    GPIOPinTypeUARTOutput(GPIO_D_BASE, GPIO_PIN_3);
-    IOCPinConfigPeriphInput(GPIO_B_BASE, GPIO_PIN_0, IOC_UARTCTS_UART1);
-    GPIOPinTypeUARTInput(GPIO_B_BASE, GPIO_PIN_0);
+    IOCPinConfigPeriphOutput(GPIO_A_BASE, GPIO_PIN_2, IOC_MUX_OUT_SEL_UART1_RTS);
+    GPIOPinTypeUARTOutput(GPIO_A_BASE, GPIO_PIN_2);
+    IOCPinConfigPeriphInput(GPIO_A_BASE, GPIO_PIN_3, IOC_UARTCTS_UART1);
+    GPIOPinTypeUARTInput(GPIO_A_BASE, GPIO_PIN_3);
   }
   
   IntEnable(HAL_UART_INT_CTRL);
