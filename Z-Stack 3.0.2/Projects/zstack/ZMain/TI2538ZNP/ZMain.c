@@ -180,6 +180,7 @@ int main( void )
 static void zmain_ext_addr( void )
 {
   uint8 nullAddr[Z_EXTADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  uint8 zeroAddr[Z_EXTADDR_LEN] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
   uint8 writeNV = TRUE;
 
   // First check whether a non-erased extended address exists in the OSAL NV.
@@ -189,7 +190,8 @@ static void zmain_ext_addr( void )
   {
     // Attempt to read the extended address from the location in the last flash
     // page where the commissioning tools know to reserve it.
-    if (!osal_memcmp((uint8 *)HAL_FLASH_IEEE_ADDR, nullAddr, Z_EXTADDR_LEN))
+    if ((!osal_memcmp((uint8 *)HAL_FLASH_IEEE_ADDR, nullAddr, Z_EXTADDR_LEN)) &&
+        (!osal_memcmp((uint8 *)HAL_FLASH_IEEE_ADDR, zeroAddr, Z_EXTADDR_LEN)))
     {
       (void)osal_memcpy(aExtendedAddress, (uint8 *)HAL_FLASH_IEEE_ADDR, Z_EXTADDR_LEN);
     }
