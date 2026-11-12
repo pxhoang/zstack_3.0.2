@@ -122,7 +122,7 @@ extern uint8 aExtendedAddress[8];
  */
 #define HAL_UART_FLOW_THRESHOLD    5
 #define HAL_UART_RX_BUF_SIZE       170
-#define HAL_UART_TX_BUF_SIZE       120
+#define HAL_UART_TX_BUF_SIZE       256  // must hold the biggest MT frame (169 bytes)
 #define HAL_UART_IDLE_TIMEOUT      5
 
 /* Restart system from absolute beginning
