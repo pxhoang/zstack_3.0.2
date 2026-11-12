@@ -2413,6 +2413,7 @@
                     <state>TP2_LEGACY_ZC</state>
                     <state>SBL_CLIENT</state>
                     <state>INCLUDE_REVISION_INFORMATION</state>
+                    <state>MT_SYS_KEY_MANAGEMENT=1</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
